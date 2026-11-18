@@ -23,6 +23,7 @@ Only comments and docstrings were translated. Program logic, argument order, ran
 6. (VM test only) `marker_check.py`
 7. `allocated_bit_check.py` (needs step 2, and step 6 for the marker check)
 8. `bit7_protection_split.py` and `pfn_original_pte_slots.py` (need step 2)
+9. `slot_owner_scan.py` (needs steps 2 and 8) and `mpfs_allocated0_markers.py` (needs steps 2 and 6)
 
 Steps 3, 4 and 6 do not depend on each other.
 
@@ -82,6 +83,12 @@ Run: `python bit7_protection_split.py <out.json> <name>=<x.entries.json> [...]`.
 
 **pfn_original_pte_slots.py** - Reads the `_MMPFN` array and collects the page file slots named by `OriginalPte` of pages on the active, standby, modified, modified no-write and transition lists. It then matches them with the `pagefile.sys` PTEs inside VADs from `pte_swizzle_probe.py`. This shows whether a slot that no PTE with `PageFileAllocated` set names is held by a page that is in memory.
 Run: `python pfn_original_pte_slots.py <memory image> <x.entries.json> <out.json>`. Uses Volatility 3 for the kernel symbols and the PFN database address (`MmPfnDatabase`); the last PFN is taken from the end of the physical layer.
+
+**slot_owner_scan.py** - For page file slots that PTEs with `PageFileAllocated` clear name, and that the AllocationBitmap marks as used, looks for an owner anywhere: every 8-byte value in the dump's physical layer and in `pagefile.sys` that is shaped like a software PTE with `PageFileAllocated` set and that slot number. Memory hits are split into inside and outside the PFN database. Two control groups of the same size show the method's rates: slots owned by a walked process PTE (should be found), and free slots (chance matches).
+Run: `python slot_owner_scan.py <memory image> <pagefile.sys> <x.entries.json> <pfn_original_pte_slots out.json> <out.json>`. Uses Volatility 3 and numpy.
+
+**mpfs_allocated0_markers.py** - Takes the pages that `marker_check.py` read from the page file with a marker pair while their PTE had `PageFileAllocated` clear, reads each with MemProcFS (`FLAG_NOCACHE`, one page at a time), and counts whether MemProcFS returns the same marker, and whether a PTE with the bit set on the same slot has that marker as its own.
+Run: `python mpfs_allocated0_markers.py <memory image> <pagefile.sys> <x.entries.json> <marker_check out.json.raw.json.gz> <out.json>`. Needs the `memprocfs` package.
 
 ## Notes
 

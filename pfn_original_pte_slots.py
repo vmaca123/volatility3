@@ -117,6 +117,7 @@ def main():
         rows.append((slot, a))
     join = Counter()
     join_pfn = Counter()                              # list state and OriginalPte bit of PFN entries on those slots
+    no_owner_slots = {"pfn_original_pte_bit_1": set(), "none": set()}   # slot lists that slot_owner_scan.py splits on
     for slot, a in rows:
         used = bool(bm[slot >> 3] & (1 << (slot & 7)))
         set_owner = sum(1 for x in ptes[slot] if x == 1) - (1 if a == 1 else 0) > 0
@@ -131,11 +132,14 @@ def main():
         else:
             kind = "allocated_0__slot_used__no_pte_with_bit_set"
         join[f"{kind}__pfn_original_pte_on_slot_{bool(pfn)}" + ("_with_bit_set" if pfn_a1 else "")] += 1
+        if kind == "allocated_0__slot_used__no_pte_with_bit_set":
+            no_owner_slots["pfn_original_pte_bit_1" if pfn_a1 else "none"].add(slot)
         for _, location, pa in pfn:
             join_pfn[f"{kind}__pfn_{location}_bit_{pa}"] += 1
     report = {"image": str(mem), "mmpfn_size": entry_size, "highest_pfn": highest,
               "pfn": dict(sorted(stat.items())), "pagefile_sys_ptes_by_kind": dict(sorted(join.items())),
               "pfn_entries_on_those_slots": dict(sorted(join_pfn.items())),
+              "bit_clear_used_no_process_owner_slots": {k: sorted(v) for k, v in no_owner_slots.items()},
               "slots_in_pfn_original_ptes": len(pfn_slots)}
     out.write_text(json.dumps(report, indent=1), encoding="utf-8", newline="\n")
     print(json.dumps(report, indent=1))
