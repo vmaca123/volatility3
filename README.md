@@ -24,6 +24,7 @@ Only comments and docstrings were translated. Program logic, argument order, ran
 7. `allocated_bit_check.py` (needs step 2, and step 6 for the marker check)
 8. `bit7_protection_split.py` and `pfn_original_pte_slots.py` (need step 2)
 9. `slot_owner_scan.py` (needs steps 2 and 8) and `mpfs_allocated0_markers.py` (needs steps 2 and 6)
+10. `mpfs_marker_slot_state.py` (needs steps 2 and 9) and `marker_commit5_diff.py` (needs step 2 and two runs of step 6)
 
 Steps 3, 4 and 6 do not depend on each other.
 
@@ -89,6 +90,12 @@ Run: `python slot_owner_scan.py <memory image> <pagefile.sys> <x.entries.json> <
 
 **mpfs_allocated0_markers.py** - Takes the pages that `marker_check.py` read from the page file with a marker pair while their PTE had `PageFileAllocated` clear, reads each with MemProcFS (`FLAG_NOCACHE`, one page at a time), and counts whether MemProcFS returns the same marker, and whether a PTE with the bit set on the same slot has that marker as its own.
 Run: `python mpfs_allocated0_markers.py <memory image> <pagefile.sys> <x.entries.json> <marker_check out.json.raw.json.gz> <out.json>`. Needs the `memprocfs` package.
+
+**mpfs_marker_slot_state.py** - Splits the pages in `mpfs_allocated0_markers.py` output by the state of their slot: in use or free in AllocationBitmap, also named by another PTE with `PageFileAllocated` set (and whether that PTE is in another process), and whether the marker check read the same marker from that PTE's page (that is, the page sits at the marker's array position). It uses neither Volatility nor MemProcFS.
+Run: `python mpfs_marker_slot_state.py <out.json> <name>=<mpfs_allocated0_markers out.json>,<x.entries.json> [...]`.
+
+**marker_commit5_diff.py** - Compares two `marker_check.py` runs on the same image page by page, e.g. before and with the `PageFileAllocated` commit. For every page the first run read from a page file (any swap layer), it records whether the second run read it from the same place, could not read it, or read it from elsewhere, split by what the first run found on the page (marker pair, bad, no_marker, zero) and the page's `PageFileAllocated` bit. It also counts pages that only the second run reads from a page file. It uses neither Volatility nor MemProcFS.
+Run: `python marker_commit5_diff.py <first .raw.json.gz> <second .raw.json.gz> <x.entries.json> <out.json>`.
 
 ## Notes
 
